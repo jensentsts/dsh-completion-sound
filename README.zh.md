@@ -16,10 +16,18 @@ DSH（DeepSeek Harness）完成提示音插件（bundle）：agent 回合完成�
 dsh plugin --profile web add github:jensentsts/dsh-completion-sound
 ```
 
-构建产物（`lib/`）已随仓库提交，因此从 git 安装**无需** pnpm 构建授权（pnpm ≥10 的 `allowBuilds`）；`dsh plugin add` 拉取后直接可用。
+把 `web` 换成你要安装进的目标 profile 名。构建产物（`lib/`）已随仓库提交，因此从 git 安装**无需** pnpm 构建授权（pnpm ≥10 的 `allowBuilds`）；`dsh plugin add` 拉取后直接可用。
 
 > 锁定提交以避免后续推送悄悄改变运行内容：
 > `dsh plugin --profile web add github:jensentsts/dsh-completion-sound#<sha>`
+
+卸载：
+
+```bash
+dsh plugin --profile web remove @jensentsts/dsh-completion-sound
+```
+
+> ⚠️ 安装插件即在你本机、以你自身的权限运行第三方代码。安装前请先审阅源码。
 
 ## 与内置完成提示音的关系
 

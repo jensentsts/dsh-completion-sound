@@ -16,10 +16,18 @@ A DSH (DeepSeek Harness) completion-sound bundle: plays a chime when an agent tu
 dsh plugin --profile web add github:jensentsts/dsh-completion-sound
 ```
 
-Build artifacts (`lib/`) are committed, so installing from git needs **no** pnpm build authorization (pnpm ≥10 `allowBuilds`); it works right after `dsh plugin add`.
+Replace `web` with the profile you want to install into. Build artifacts (`lib/`) are committed, so installing from git needs **no** pnpm build authorization (pnpm ≥10 `allowBuilds`); it works right after `dsh plugin add`.
 
 > Pin a commit so later pushes cannot silently change what runs:
 > `dsh plugin --profile web add github:jensentsts/dsh-completion-sound#<sha>`
+
+Uninstall:
+
+```bash
+dsh plugin --profile web remove @jensentsts/dsh-completion-sound
+```
+
+> ⚠️ Installing a plugin runs third-party code on your machine with your own permissions. Review the source before you install.
 
 ## Relationship to the built-in completion sound
 
