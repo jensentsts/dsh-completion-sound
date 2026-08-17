@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# Regenerated build intermediates (committed artifacts under lib/ stay tracked):
+# the tsc-emitted JS/sourcemaps and the tsbuildinfo, but not the bundles or types.
+lib/*.tsbuildinfo
+lib/**/*.map
+lib/types/**/*.js
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log

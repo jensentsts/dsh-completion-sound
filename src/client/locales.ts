@@ -1,0 +1,80 @@
+/**
+ * `settings.completion-sound` namespace dictionaries (the Completion Sound
+ * section's copy plus the playback-stop modal).
+ */
+export const NS = 'settings.completion-sound'
+
+/** Simplified Chinese dictionary (the key-set source of truth). */
+export const zh = {
+  'completion-sound.title': '完成提示音',
+  'completion-sound.nav': '完成提示音',
+  'completion-sound.subtitle': '回合结束时播放提示音；长任务可播放特殊音乐，并可弹出桌面通知',
+  'completion-sound.on': '开',
+  'completion-sound.off': '关',
+  'completion-sound.enabled': '完成提示音',
+  'completion-sound.enabledDesc': '回合完成后播放提示音',
+  'completion-sound.notify': '桌面通知',
+  'completion-sound.notifyDesc': '完成时发送桌面通知；优先使用浏览器通知，不可用时自动改用系统通知',
+  'completion-sound.volume': '音量',
+  'completion-sound.volumeDesc': '控制提示音与特殊音乐的播放响度',
+  'completion-sound.test': '试听提示音',
+  'completion-sound.testNotify': '测试通知',
+  'completion-sound.notified': '任务完成',
+  'completion-sound.notifyTestBody': '这是一条测试通知',
+  'completion-sound.notifyGranted': '已发送桌面通知',
+  'completion-sound.notifyPending': '正在等待通知权限…',
+  'completion-sound.notifyDenied': '浏览器通知被阻止且系统通知发送失败，请在浏览器或系统设置里允许通知',
+  'completion-sound.notifyUnsupported': '当前环境浏览器与系统通知均不可用',
+  'completion-sound.longTaskGroup': '长任务',
+  'completion-sound.longTaskMinutes': '长任务时长',
+  'completion-sound.longTaskMinutesDesc': '回合时长达到该分钟数即视为长任务',
+  'completion-sound.minutesUnit': '分钟',
+  'completion-sound.special': '长任务完成时特殊音乐',
+  'completion-sound.specialDesc': '开启后，长任务完成时播放指定的音乐；关闭时与普通回合一样播放提示音',
+  'completion-sound.specialPath': '音乐文件或目录',
+  'completion-sound.specialPathDesc': '留空使用内置「关羽之歌」；可填写音频文件路径或目录路径，目录中将随机播放其中一首音频；路径无效时回退到内置音乐',
+  'completion-sound.specialPathPlaceholder': '例如 D:\\Music\\victory.mp3',
+  'completion-sound.testSpecial': '试听',
+  'completion-sound.modalTitle': '任务完成',
+  'completion-sound.modalBody': '特殊音乐播放中，点击任意处停止',
+  'completion-sound.modalStop': '停止播放',
+} satisfies Record<string, string>
+
+/** The settings.completion-sound namespace key union. */
+export type CompletionSoundKey = keyof typeof zh
+
+/** English dictionary, checked complete against the zh key set. */
+export const en = {
+  'completion-sound.title': 'Completion sound',
+  'completion-sound.nav': 'Completion sound',
+  'completion-sound.subtitle': 'Play a cue when a turn completes; long turns can play special music and raise a desktop notification',
+  'completion-sound.on': 'On',
+  'completion-sound.off': 'Off',
+  'completion-sound.enabled': 'Completion sound',
+  'completion-sound.enabledDesc': 'Play a cue when a turn completes',
+  'completion-sound.notify': 'Desktop notification',
+  'completion-sound.notifyDesc': 'Send a desktop notification when a turn completes; prefers the browser notification and falls back to the OS notifier',
+  'completion-sound.volume': 'Volume',
+  'completion-sound.volumeDesc': 'Playback loudness for the chime and the special music',
+  'completion-sound.test': 'Preview chime',
+  'completion-sound.testNotify': 'Test notification',
+  'completion-sound.notified': 'Task completed',
+  'completion-sound.notifyTestBody': 'This is a test notification',
+  'completion-sound.notifyGranted': 'Desktop notification sent',
+  'completion-sound.notifyPending': 'Waiting for notification permission…',
+  'completion-sound.notifyDenied': 'Browser notifications blocked and the OS notifier failed — allow notifications in browser/OS settings',
+  'completion-sound.notifyUnsupported': 'Neither browser nor OS notifications are available here',
+  'completion-sound.longTaskGroup': 'Long tasks',
+  'completion-sound.longTaskMinutes': 'Long task duration',
+  'completion-sound.longTaskMinutesDesc': 'Turns lasting at least this many minutes count as long tasks',
+  'completion-sound.minutesUnit': 'min',
+  'completion-sound.special': 'Special music on long-task completion',
+  'completion-sound.specialDesc': 'When on, long tasks play the selected music; when off, they play the normal chime like any other turn',
+  'completion-sound.specialPath': 'Music file or directory',
+  'completion-sound.specialPathDesc': 'Leave empty to use the bundled "Guan Yu" cue; set an audio file, or a directory to play one random audio file from it; falls back to the bundled cue when unusable',
+  'completion-sound.specialPathPlaceholder': 'e.g. D:\\Music\\victory.mp3',
+  'completion-sound.testSpecial': 'Preview',
+  'completion-sound.modalTitle': 'Task completed',
+  'completion-sound.modalBody': 'Special music playing — click anywhere to stop',
+  'completion-sound.modalStop': 'Stop',
+} satisfies Record<CompletionSoundKey, string>

@@ -1,0 +1,4 @@
+# esbuild's postinstall downloads its platform binary; allow it so `tsx`
+# (used by tsdown to load this repo's config) works after a fresh install.
+allowBuilds:
+  esbuild: true

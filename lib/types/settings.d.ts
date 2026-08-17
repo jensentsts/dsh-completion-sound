@@ -1,0 +1,59 @@
+/**
+ * Completion-sound preferences stored in the Host user-settings document.
+ * Schema-free on purpose: the schema (which needs schemastery) lives in the
+ * node half, so the browser bundle never inlines it. This module carries only
+ * the namespace identity, the field names, and the shared section type.
+ */
+/** Settings namespace owned by the completion-sound plugin. */
+export declare const COMPLETION_SOUND_SETTINGS_NAMESPACE = "completion-sound";
+/** Field carrying the master sound switch. */
+export declare const COMPLETION_SOUND_ENABLED_FIELD = "enabled";
+/** Field carrying the desktop-notification switch. */
+export declare const COMPLETION_SOUND_NOTIFY_FIELD = "notify";
+/** Field carrying the playback gain (0..1). */
+export declare const COMPLETION_SOUND_VOLUME_FIELD = "volume";
+/** Field carrying the long-task threshold in minutes. */
+export declare const COMPLETION_SOUND_LONG_TASK_MINUTES_FIELD = "longTaskMinutes";
+/** Field carrying the special long-task music switch. */
+export declare const COMPLETION_SOUND_SPECIAL_FIELD = "special";
+/** Field carrying the user-selected special-cue file/directory path ('' = bundled). */
+export declare const COMPLETION_SOUND_SPECIAL_PATH_FIELD = "specialPath";
+/** Default playback gain (0..1) when the user-settings document has no override. */
+export declare const DEFAULT_VOLUME = 0.5;
+/** Default long-task threshold (minutes). */
+export declare const DEFAULT_LONG_TASK_MINUTES = 10;
+/** Minimum long-task threshold (minutes). */
+export declare const MIN_LONG_TASK_MINUTES = 1;
+/** Maximum long-task threshold (minutes) — seven days. */
+export declare const MAX_LONG_TASK_MINUTES = 10080;
+/** Web route the node half serves the bundled long-task ("guan-yu") cue under. */
+export declare const GUAN_YU_SOUND_URL = "/completion-sound/guan-yu.wav";
+/**
+ * Web route the node half serves the special long-task cue under. The resolver
+ * reads the `specialPath` setting at request time: empty selects the bundled
+ * sample, a file serves itself, and a directory serves one random audio file.
+ */
+export declare const SPECIAL_SOUND_URL = "/completion-sound/special";
+/**
+ * Web route the node half serves the Host-side OS-notification fallback under.
+ * The browser Notification API is the primary channel; this POST route lets the
+ * client ask the local process to raise an OS notification (osascript on macOS,
+ * notify-send on Linux) when the browser channel is missing or blocked.
+ */
+export declare const COMPLETION_SOUND_NOTIFY_URL = "/completion-sound/notify";
+/** Durable completion-sound section shared by the Host schema and the browser scope. */
+export interface CompletionSoundSettings {
+    /** Master switch: play any sound on turn completion. */
+    enabled: boolean;
+    /** Also raise a desktop notification when a turn finishes. */
+    notify: boolean;
+    /** Playback gain, 0 (silent) through 1 (full). */
+    volume: number;
+    /** Turns lasting at least this many minutes earn long-task handling. */
+    longTaskMinutes: number;
+    /** Play the special long-task music instead of the chime on long turns. */
+    special: boolean;
+    /** File or directory path for the special music; '' selects the bundled sample. */
+    specialPath: string;
+}
+//# sourceMappingURL=settings.d.ts.map

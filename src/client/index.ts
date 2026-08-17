@@ -1,0 +1,197 @@
+/**
+ * Completion-sound plugin, browser half: watches the sessions list mirror and
+ * fires a completion cue (a WebAudio chime for short turns, the special
+ * long-task music for turns that ran at least `longTaskMinutes`, and optionally
+ * a desktop notification) whenever a session's `running` flag flips true →
+ * false. When the special long-task music is enabled it mounts a dismissable
+ * in-page modal whose click stops playback immediately. Also registers the
+ * feature-owned Completion Sound page into the settings `settings.section`
+ * slot — the feature owns its settings surface.
+ */
+import type { BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
+import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+// Type-only: the ctx.settingsScope Context merge. Cross-plugin collaboration
+// goes through the service, never a value import (client bundle purity gate).
+import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+// Type-only: pulls the locale plugin's Context merge (ctx.locale).
+import type {} from '@deepseek-ai/dsh-client-locale/client'
+import {
+  COMPLETION_SOUND_SETTINGS_NAMESPACE, DEFAULT_LONG_TASK_MINUTES,
+  type CompletionSoundSettings,
+} from '../settings.ts'
+import type { CompletionSoundSectionInjected } from './CompletionSoundSection.tsx'
+import { CompletionSoundSection } from './CompletionSoundSection.tsx'
+import { createCompletionSoundSectionStore } from './settings-store.ts'
+import { en, zh, NS, type CompletionSoundKey } from './locales.ts'
+import { notifyCompletion, requestNotificationPermission, testNotification } from './notify.ts'
+import { playCompletionChime, playSpecialSound, stopSpecialSound, unlockAudio } from './sound.ts'
+import { closeStopModal, showStopModal } from './stop-modal.tsx'
+
+export type { CompletionSoundSectionComponentProps, CompletionSoundSectionInjected } from './CompletionSoundSection.tsx'
+export type { CompletionSoundSectionState } from './settings-store.ts'
+export type { CompletionSoundKey } from './locales.ts'
+export type { CompletionSoundSettings } from '../settings.ts'
+
+/** Namespace owning this feature's settings-section copy. */
+export const SETTINGS_NS = NS
+
+declare module '@deepseek-ai/dsh-client-ui-slots' {
+  interface LocaleNamespaceMap {
+    /** The Completion Sound settings section's copy. */
+    'settings.completion-sound': CompletionSoundKey
+  }
+}
+
+/** Required services: sessions (completion watch) plus settings/slots/locale for the section. */
+export const inject = ['sessions', 'slots', 'locale', 'connection', 'remote', 'settingsScope']
+
+/** Defaults applied until the Host settings section resolves. */
+const DEFAULT_SETTINGS: CompletionSoundSettings = Object.freeze({
+  enabled: true,
+  notify: false,
+  volume: 0.5,
+  longTaskMinutes: DEFAULT_LONG_TASK_MINUTES,
+  special: true,
+  specialPath: '',
+})
+
+/** Turn duration (ms) that earns the long-task cue instead of the short chime. */
+function longTaskMs(settings: CompletionSoundSettings): number {
+  return settings.longTaskMinutes * 60_000
+}
+
+/**
+ * Client plugin body: register the section, prime audio on the first gesture,
+ * and watch the sessions list for running → idle transitions.
+ * @param ctx - client cordis context.
+ */
+export function apply(ctx: ClientContext): void {
+  const scope = ctx.settingsScope.bind<CompletionSoundSettings>({ namespace: COMPLETION_SOUND_SETTINGS_NAMESPACE })
+
+  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-completion-sound: settings section dictionaries')
+
+  // Prime the audio context on the first gesture so a completion cue plays
+  // even though the completion itself carries no user gesture.
+  if (typeof window !== 'undefined') {
+    ctx.effect(() => {
+      window.addEventListener('pointerdown', unlockAudio)
+      window.addEventListener('keydown', unlockAudio)
+      return () => {
+        window.removeEventListener('pointerdown', unlockAudio)
+        window.removeEventListener('keydown', unlockAudio)
+      }
+    }, 'ui-completion-sound: audio unlock')
+  }
+
+  const t = ctx.locale.bind(NS)
+
+  /**
+   * Start the special long-task cue and mount a dismissable overlay whose click
+   * stops playback immediately (window.alert can't: it blocks JS, so the cue
+   * would keep playing). Volume ≤ 0 skips both sound and modal.
+   */
+  const playSpecialWithStop = (volume: number, specialPath: string): void => {
+    if (volume <= 0) return
+    showStopModal({
+      title: t('completion-sound.modalTitle'),
+      body: t('completion-sound.modalBody'),
+      stopLabel: t('completion-sound.modalStop'),
+      onStop: () => { stopSpecialSound() },
+    })
+    void playSpecialSound(volume, specialPath).then((started) => {
+      if (!started) closeStopModal()
+    })
+  }
+
+  // Optimistic local settings snapshot + monotonic revision guard. Writes reflect
+  // in the section store synchronously (no round-trip) and persist in the
+  // background; `adopt` reconciles the durable section and any external write.
+  let settings: CompletionSoundSettings = { ...DEFAULT_SETTINGS }
+  let revision = 0
+
+  const store = createCompletionSoundSectionStore()
+  let bound: BoundActions<typeof store> | undefined
+  const publish = (): void => { bound?.sync(settings, revision) }
+
+  // Adopt the durable section (initial load + external writes). Scope change
+  // always wins: bump revision so the store's guard never drops it.
+  const adopt = (): void => {
+    const value = scope.getSnapshot().value
+    if (value === undefined) return
+    revision += 1
+    settings = value
+    publish()
+  }
+  ctx.effect(() => scope.subscribe(adopt), 'ui-completion-sound: settings scope adoption')
+
+  // Optimistic write: reflect locally + in the section store immediately, then
+  // persist in the background. A failed persist is reconciled by `adopt`.
+  const write = <K extends keyof CompletionSoundSettings>(field: K, value: CompletionSoundSettings[K]): void => {
+    settings = { ...settings, [field]: value }
+    revision += 1
+    publish()
+    void scope.set(field, value)
+  }
+
+  // Completion watch: diff each session's `running` flag across list snapshots,
+  // timing each run so short turns get the chime and long tasks get the special
+  // cue (when enabled). Session id → wall-clock ms the run started.
+  const running = new Map<string, number>()
+  ctx.effect(() => ctx.sessions.list.subscribe(() => {
+    const snapshot = ctx.sessions.list.getSnapshot()
+    const now = Date.now()
+    const finished: { title: string, elapsedMs: number }[] = []
+    const next = new Map<string, number>()
+    for (const id of snapshot.ids) {
+      const summary = snapshot.byId[id]
+      const isRunning = summary?.running ?? false
+      const startedAt = running.get(id)
+      if (isRunning) {
+        next.set(id, startedAt ?? now)
+      } else if (startedAt !== undefined) {
+        finished.push({ title: summary?.displayTitle ?? id, elapsedMs: now - startedAt })
+      }
+    }
+    running.clear()
+    for (const [id, startedAt] of next) running.set(id, startedAt)
+    if (finished.length === 0) return
+    const title = finished.map(f => f.title).join(', ')
+    if (settings.enabled) {
+      const longTask = finished.some(f => f.elapsedMs >= longTaskMs(settings))
+      if (longTask && settings.special) playSpecialWithStop(settings.volume, settings.specialPath)
+      else void playCompletionChime(settings.volume)
+    }
+    if (settings.notify) void notifyCompletion(t('completion-sound.notified'), title)
+  }), 'ui-completion-sound: sessions completion watch')
+
+  // Settings section. The injected face drives the store through the optimistic
+  // `write`/`publish` path; the store is re-primed on registration so no local
+  // change is lost between service construction and first render.
+  const injected = (actions: BoundActions<typeof store>): CompletionSoundSectionInjected => {
+    bound = actions
+    publish()
+    return {
+      setEnabled: (value) => { write('enabled', value) },
+      setNotify: (value) => {
+        if (value) requestNotificationPermission()
+        write('notify', value)
+      },
+      setVolume: (value) => { write('volume', value) },
+      setLongTaskMinutes: (value) => { write('longTaskMinutes', value) },
+      setSpecial: (value) => { write('special', value) },
+      setSpecialPath: (value) => { write('specialPath', value) },
+      previewChime: (volume) => { void playCompletionChime(volume) },
+      previewSpecial: (volume, specialPath) => { playSpecialWithStop(volume, specialPath) },
+      testNotify: () => testNotification(t('completion-sound.notified'), t('completion-sound.notifyTestBody')),
+    }
+  }
+  ctx.slots.inject('settings.section', () => ctx.slots.register({
+    name: 'settings.section',
+    id: 'completion-sound',
+    order: 30,
+    label: () => t('completion-sound.nav'),
+    store,
+    locale: NS,
+    inject: injected,
+  }, CompletionSoundSection))
+}

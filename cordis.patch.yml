@@ -1,0 +1,15 @@
+# The dsh-completion-sound bundle patch: the standalone completion cue over a
+# web profile. When the profile also mounts dsh-web-app, its layer inserts the
+# built-in `ui-completion-sound` row (pointing at
+# @deepseek-ai/dsh-client-ui-completion-sound); this layer disables that row and
+# inserts its own under a distinct id so the standalone version takes over
+# without a duplicate cue. On a profile without dsh-web-app the disable targets
+# nothing (skipped) and the insert still provides the plugin where a web
+# surface exists.
+
+- id: ui-completion-sound
+  disabled: true
+
+- insert:
+    - id: completion-sound
+      name: '@jensentsts/dsh-completion-sound'
